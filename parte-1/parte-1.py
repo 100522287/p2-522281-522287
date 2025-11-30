@@ -188,10 +188,10 @@ def main():
     print(formato_rejilla(matriz, n))
     
     # Crear y resolver el modelo CSP
-    problemaaa = crear_modelo(matriz)
+    problem = crear_modelo(matriz)
     
     # Obtener todas las soluciones
-    soluciones = problemaaa.getSolutions()
+    soluciones = problem.getSolutions()
     num_soluciones = len(soluciones)
     
     # Mostrar número de soluciones

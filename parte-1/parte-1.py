@@ -1,10 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Parte 1: Resolución del problema BINAIRO mediante Satisfacción de Restricciones.
-
-Este script resuelve instancias del puzzle BINAIRO utilizando la librería
-python-constraint. El problema consiste en rellenar una rejilla n×n con
+El problema consiste en rellenar una rejilla n×n con
 discos blancos (O) y negros (X) cumpliendo las siguientes restricciones:
   - No debe quedar ninguna posición vacía.
   - El número de discos blancos y negros en cada fila y columna debe ser igual.
@@ -192,10 +188,10 @@ def main():
     print(formato_rejilla(matriz, n))
     
     # Crear y resolver el modelo CSP
-    problem = crear_modelo(matriz)
+    problemaaa = crear_modelo(matriz)
     
     # Obtener todas las soluciones
-    soluciones = problem.getSolutions()
+    soluciones = problemaaa.getSolutions()
     num_soluciones = len(soluciones)
     
     # Mostrar número de soluciones

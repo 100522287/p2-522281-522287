@@ -6,10 +6,10 @@ discos blancos (O) y negros (X) cumpliendo las siguientes restricciones:
   - El número de discos blancos y negros en cada fila y columna debe ser igual.
   - No es posible disponer más de dos discos del mismo color consecutivamente.
 
-Uso: ./parte-1.py <fichero-entrada> <fichero-salida>
+Uso: python3 parte-1.py <fichero-entrada> <fichero-salida>
 """
 
-import sys
+import sys 
 from constraint import Problem, ExactSumConstraint
 
 
@@ -17,7 +17,7 @@ def leer_instancia(fichero_entrada):
     """
     Lee el fichero de entrada y devuelve la matriz del problema.
     
-    Args:
+    Argumentos:
         fichero_entrada: Ruta al fichero con la instancia del problema.
         
     Returns:
@@ -25,21 +25,21 @@ def leer_instancia(fichero_entrada):
         '.' indica celda vacía, 'X' disco negro, 'O' disco blanco.
     """
     with open(fichero_entrada, 'r') as f:
-        lineas = f.read().strip().split('\n')
+        lineas = f.read().strip().split('\n') # Leer todas las líneas del archivo
     
     matriz = []
     for linea in lineas:
-        fila = list(linea.strip())
-        matriz.append(fila)
-    
-    return matriz
+        fila = list(linea.strip()) 
+        matriz.append(fila) # Añadir cada fila a la matriz
+
+    return matriz # Devolver la matriz completa
 
 
 def formato_rejilla(matriz, n):
     """
     Genera la representación visual de la rejilla.
     
-    Args:
+    Argumentos:
         matriz: Lista de listas con los valores de las celdas.
         n: Dimensión de la rejilla.
         
@@ -53,31 +53,32 @@ def formato_rejilla(matriz, n):
         contenido = '|'
         for celda in fila:
             if celda == '.':
-                contenido += '   |'
+                contenido += '   |' # Celda vacía
             elif celda == 'X':
-                contenido += ' X |'
+                contenido += ' X |' # Disco negro
             elif celda == 'O':
-                contenido += ' O |'
+                contenido += ' O |' # Disco blanco
+            # estos casos son para después de resolver
             elif celda == 1:
-                contenido += ' X |'
+                contenido += ' X |' # Disco negro
             elif celda == 0:
-                contenido += ' O |'
+                contenido += ' O |' # Disco blanco
             else:
                 contenido += ' ' + str(celda) + ' |'
         lineas.append(contenido)
         lineas.append(separador)
     
-    return '\n'.join(lineas)
+    return '\n'.join(lineas) # Devolver la rejilla formateada como string
 
 
 def restriccion_no_tres_consecutivos(v1, v2, v3):
     """
-    Verifica que tres valores consecutivos no sean todos iguales.
+    Verifica que tres valores consecutivos no sean todos iguales (todos blancos o todos negros).
     
     Esta restricción asegura que no haya más de dos discos del mismo
     color consecutivos en una fila o columna.
     
-    Args:
+    Argumentos:
         v1, v2, v3: Valores de tres celdas consecutivas.
         
     Returns:
@@ -95,10 +96,13 @@ def crear_modelo(matriz):
     El modelo sigue la formalización:
     - Variables: x_ij para cada celda (i,j)
     - Dominios: {0,1} para celdas vacías, valor fijo para celdas pre-asignadas
-    - Restricciones: C1 (equilibrio filas), C2 (equilibrio columnas),
-                     C3 (no tres consecutivos en filas), C4 (no tres consecutivos en columnas)
+    - Restricciones: 
+            C1 (equilibrio filas), 
+            C2 (equilibrio columnas),
+            C3 (no tres consecutivos en filas),
+            C4 (no tres consecutivos en columnas)
     
-    Args:
+    Argumentos:
         matriz: Rejilla del problema con valores iniciales.
         
     Returns:
@@ -122,26 +126,26 @@ def crear_modelo(matriz):
                 # Disco blanco pre-asignado
                 problem.addVariable((i, j), [0])
     
-    # Restricción C1: Equilibrio en cada fila
+    # C1: Equilibrio en cada fila
     # La suma de valores en cada fila debe ser exactamente n/2
     for i in range(n):
         variables_fila = [(i, j) for j in range(n)]
         problem.addConstraint(ExactSumConstraint(n // 2), variables_fila)
     
-    # Restricción C2: Equilibrio en cada columna
+    # C2: Equilibrio en cada columna
     # La suma de valores en cada columna debe ser exactamente n/2
     for j in range(n):
         variables_columna = [(i, j) for i in range(n)]
         problem.addConstraint(ExactSumConstraint(n // 2), variables_columna)
     
-    # Restricción C3: No más de dos consecutivos en filas
+    # C3: No más de dos consecutivos en filas
     # Para cada triplete horizontal, no pueden ser todos iguales
     for i in range(n):
         for j in range(n - 2):
             variables_triplete = [(i, j), (i, j + 1), (i, j + 2)]
             problem.addConstraint(restriccion_no_tres_consecutivos, variables_triplete)
     
-    # Restricción C4: No más de dos consecutivos en columnas
+    # C4: No más de dos consecutivos en columnas
     # Para cada triplete vertical, no pueden ser todos iguales
     for j in range(n):
         for i in range(n - 2):
@@ -151,19 +155,19 @@ def crear_modelo(matriz):
     return problem
 
 
-def solucion_a_matriz(solucion, n):
+def solucion_a_matriz(dic, n):
     """
     Convierte el diccionario de solución a formato matriz.
     
-    Args:
-        solucion: Diccionario con asignaciones {(i,j): valor}.
+    Argumentos:
+        dic: Diccionario con asignaciones {(i,j): valor}.
         n: Dimensión de la rejilla.
         
     Returns:
         Lista de listas con los valores de la solución.
     """
-    matriz = [[0 for _ in range(n)] for _ in range(n)]
-    for (i, j), valor in solucion.items():
+    matriz = [[0 for _ in range(n)] for _ in range(n)] # Inicializar matriz llena de ceros
+    for (i, j), valor in dic.items():
         matriz[i][j] = valor
     return matriz
 
@@ -174,7 +178,7 @@ def main():
     """
     # Verificación de argumentos
     if len(sys.argv) != 3:
-        print("Uso: ./parte-1.py <fichero-entrada> <fichero-salida>")
+        print("Uso: python3 parte-1.py <fichero-entrada> <fichero-salida>")
         sys.exit(1)
     
     fichero_entrada = sys.argv[1]
@@ -196,7 +200,7 @@ def main():
     
     # Mostrar número de soluciones
     if num_soluciones == 1:
-        print(f"{num_soluciones} solución encontrada")
+        print("Una solución encontrada")
     else:
         print(f"{num_soluciones} soluciones encontradas")
     

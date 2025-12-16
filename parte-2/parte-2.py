@@ -95,36 +95,43 @@ def main():
         print(f"Error: el vértice {vertice_2} no existe en el grafo")
         sys.exit(1)
     
-    # Resolver con A*
-    algoritmo = AlgoritmoAStarConPadres(grafo, vertice_1, vertice_2)
-    
+    print("--- Ejecutando A* (Búsqueda Informada) ---")
+    algoritmo_astar = AlgoritmoAStarConPadres(grafo, vertice_1, vertice_2)
+        
     tiempo_inicio = time.time()
-    camino, coste = algoritmo.resolver()
+    camino_astar, coste_astar = algoritmo_astar.resolver()
     tiempo_fin = time.time()
     
-    tiempo_ejecucion = tiempo_fin - tiempo_inicio
-    expansiones = algoritmo.expansiones
+    tiempo_astar = tiempo_fin - tiempo_inicio
+    expansiones_astar = algoritmo_astar.expansiones
     
-    # Calcular nodos por segundo
-    if tiempo_ejecucion > 0:
-        nodos_por_segundo = expansiones / tiempo_ejecucion
-    else:
-        nodos_por_segundo = 0
+    print(f"Coste: {coste_astar}")
+    print(f"Expansiones: {expansiones_astar}")
+    print(f"Tiempo: {tiempo_astar:.4f} s\n")
+
+    print("--- Ejecutando Dijkstra (Fuerza Bruta) ---")
+    algoritmo_dijkstra = AlgoritmoDijkstra(grafo, vertice_1, vertice_2)
     
-    # Mostrar resultados
-    if camino is not None:
-        print(f"Solución óptima encontrada con coste {coste}")
-    else:
-        print("No se encontró solución")
+    tiempo_inicio = time.time()
+    _, coste_dijkstra = algoritmo_dijkstra.resolver() # Solo interesa el coste, el camino lo almacena pero no se usa aquí
+    tiempo_fin = time.time()
     
-    print()
-    print(f"Tiempo de ejecución: {tiempo_ejecucion:.2f} segundos")
-    print(f"# expansiones      : {expansiones} ({nodos_por_segundo:.2f} nodes/sec)")
+    tiempo_dijkstra = tiempo_fin - tiempo_inicio
+    expansiones_dijkstra = algoritmo_dijkstra.expansiones
+
+    print(f"Coste: {coste_dijkstra}")
+    print(f"Expansiones: {expansiones_dijkstra}")
+    print(f"Tiempo: {tiempo_dijkstra:.4f} s\n")
+
+    # Comparativa
+    if expansiones_dijkstra > 0:
+        ahorro = 100 * (1 - expansiones_astar / expansiones_dijkstra)
+        print(f"A* expandió un {ahorro:.2f}% menos de nodos que Dijkstra.")
     
     # Escribir solución en fichero
     with open(fichero_salida, 'w') as f:
-        if camino is not None:
-            f.write(formatear_camino(camino))
+        if camino_astar is not None:
+            f.write(formatear_camino(camino_astar))
             f.write('\n')
         else:
             f.write("No se encontró solución\n")

@@ -3,16 +3,16 @@
 """
 Módulo con la implementación del algoritmo de búsqueda A* usando Dial's Bucket.
 
-VERSIÓN CORREGIDA: Goal test al extraer el nodo, no después de expandirlo.
-Esto reduce las expansiones de 5 a 4 en el caso de prueba 1→309.
+VERSIÓN SIN LAZY DELETION - Más eficiente y con menor overhead.
 
 A* es un algoritmo de búsqueda informada que combina:
 - g(n): coste del camino desde el inicio hasta n
 - h(n): estimación heurística del coste desde n hasta el objetivo
 - f(n) = g(n) + h(n): función de evaluación
 
-Esta implementación utiliza Dial's Bucket en lugar de heap binario,
-lo cual es más eficiente para grafos con pesos enteros como DIMACS.
+Esta implementación utiliza Dial's Bucket sin lazy deletion,
+lo cual reduce el overhead y hace la diferencia entre A* y Dijkstra
+más evidente.
 
 Propiedades de A*:
 - Es ADMISIBLE: garantiza encontrar la solución óptima si h(n) es admisible
@@ -23,24 +23,23 @@ porque representa el camino más corto posible sobre la superficie terrestre.
 """
 
 from abierta import ListaAbierta
-from cerrada import ListaCerrada
 
 
 class AlgoritmoAStarConPadres:
     """
-    Implementación del algoritmo A* con Dial's Bucket.
+    Implementación del algoritmo A* con Dial's Bucket SIN lazy deletion.
     
-    CORRECCIÓN CLAVE: El goal test se realiza INMEDIATAMENTE al extraer
-    el nodo de OPEN, antes de marcarlo como expandido. Esto evita contar
-    el nodo objetivo como una expansión.
+    El goal test se realiza INMEDIATAMENTE al extraer el nodo de OPEN,
+    antes de marcarlo como expandido. Esto evita contar el nodo objetivo
+    como una expansión.
     
     Esta versión mantiene un registro de qué nodo generó cada nodo
     para poder reconstruir el camino solución.
     
-    Utiliza Dial's Bucket para la lista abierta, que proporciona:
-    - Inserción: O(1)
-    - Extracción del mínimo: O(C) amortizado
-    - Sin necesidad de heap
+    Sin lazy deletion, la estructura es más eficiente:
+    - No hay entradas duplicadas en los buckets
+    - No hay verificaciones de validez al extraer
+    - Menor overhead, diferencia más clara con Dijkstra
     
     Atributos:
         grafo: Objeto Grafo con la estructura del problema.
@@ -85,14 +84,9 @@ class AlgoritmoAStarConPadres:
         """
         Ejecuta A* con Dial's Bucket para encontrar el camino óptimo.
         
-        CORRECCIÓN IMPORTANTE:
-        El goal test se realiza INMEDIATAMENTE al extraer el nodo de OPEN,
-        ANTES de añadirlo a CLOSED y ANTES de contar la expansión.
-        
-        Esto es correcto porque:
-        1. El nodo ya fue generado por su padre (ya está en el árbol de búsqueda)
-        2. Tiene el menor f(n) en OPEN (es el siguiente a explorar)
-        3. Si es el objetivo, no necesitamos expandirlo
+        Sin lazy deletion, cada nodo aparece exactamente una vez en OPEN.
+        Cuando se actualiza un nodo, se elimina explícitamente del bucket
+        anterior antes de insertarse en el nuevo.
         
         Algoritmo:
         1. Inicializa OPEN con el nodo origen
@@ -132,19 +126,10 @@ class AlgoritmoAStarConPadres:
             
             nodo_actual, g_actual = resultado
             
-            # Si ya está en cerrada, ignorar (lazy deletion)
-            if nodo_actual in cerrada:
-                continue
-            
-            # Si el g actual es peor que el conocido, ignorar
-            if g_actual > g_minimo.get(nodo_actual, float('inf')):
-                continue
-            
             # ========================================
-            # GOAL TEST INMEDIATO (CORRECCIÓN CLAVE)
+            # GOAL TEST INMEDIATO
             # ========================================
             # Comprobar si es el objetivo ANTES de expandir
-            # Esto evita contarlo como expansión innecesaria
             if nodo_actual == self.destino:
                 self.coste_optimo = g_actual
                 # Reconstruir y retornar el camino SIN contar expansión
@@ -172,6 +157,8 @@ class AlgoritmoAStarConPadres:
                     padres[sucesor] = (nodo_actual, coste_arco)
                     
                     h_sucesor = self.heuristica(sucesor)
+                    # Con esta inserción, si el nodo ya estaba en OPEN,
+                    # se eliminará del bucket anterior automáticamente
                     abierta.insertar(sucesor, g_sucesor, h_sucesor)
         
         # No se encontró solución
@@ -202,7 +189,7 @@ class AlgoritmoAStarConPadres:
 
 class AlgoritmoDijkstra:
     """
-    Implementación del algoritmo de Dijkstra con Dial's Bucket.
+    Implementación del algoritmo de Dijkstra con Dial's Bucket SIN lazy deletion.
     
     Dijkstra es equivalente a A* con h(n) = 0, es decir, sin usar
     información heurística. Se utiliza como baseline para comparar
@@ -214,8 +201,8 @@ class AlgoritmoDijkstra:
     
     Por tanto, Dijkstra expande más nodos que A* con buena heurística.
     
-    Esta implementación usa Dial's Bucket para mantener consistencia
-    con A* y evitar el uso de heaps.
+    Esta implementación usa Dial's Bucket sin lazy deletion para mantener
+    consistencia con A* y reducir overhead.
     """
     
     def __init__(self, grafo, origen, destino):
@@ -237,7 +224,7 @@ class AlgoritmoDijkstra:
         """
         Ejecuta Dijkstra con Dial's Bucket para encontrar el camino más corto.
         
-        CORRECCIÓN: También aplica goal test al extraer el nodo.
+        También aplica goal test al extraer el nodo (como A*).
         
         Returns:
             Tupla (camino, coste) donde camino es lista de (nodo, coste_arco).
@@ -264,13 +251,7 @@ class AlgoritmoDijkstra:
             
             nodo_actual, g_actual = resultado
             
-            if nodo_actual in cerrada:
-                continue
-            
-            if g_actual > g_minimo.get(nodo_actual, float('inf')):
-                continue
-            
-            # Goal test al extraer (como en A* corregido)
+            # Goal test al extraer (como en A*)
             if nodo_actual == self.destino:
                 self.coste_optimo = g_actual
                 camino = self._reconstruir_camino(padres, nodo_actual)
@@ -309,12 +290,9 @@ class AlgoritmoDijkstra:
 
 class AlgoritmoAStar:
     """
-    Implementación básica de A* usando la lista abierta modular.
+    Implementación básica de A* sin lazy deletion.
     
-    Esta clase mantiene compatibilidad con la interfaz original
-    pero utiliza Dial's Bucket internamente.
-    
-    CORRECCIÓN: Goal test al extraer el nodo.
+    Esta clase mantiene compatibilidad con la interfaz original.
     """
     
     def __init__(self, grafo, origen, destino):
@@ -330,7 +308,6 @@ class AlgoritmoAStar:
         self.origen = origen
         self.destino = destino
         self.abierta = ListaAbierta()
-        self.cerrada = ListaCerrada()
         self.expansiones = 0
         self.coste_optimo = None
     
@@ -349,8 +326,6 @@ class AlgoritmoAStar:
     def resolver(self):
         """
         Ejecuta el algoritmo A* para encontrar el camino óptimo.
-        
-        CORRECCIÓN: Goal test al extraer.
         
         Returns:
             Tupla (camino, coste) si encuentra solución, (None, None) si no.
@@ -374,12 +349,6 @@ class AlgoritmoAStar:
                 break
             
             nodo_actual, g_actual = resultado
-            
-            if nodo_actual in cerrada:
-                continue
-            
-            if g_actual > g_minimo.get(nodo_actual, float('inf')):
-                continue
             
             # Goal test al extraer
             if nodo_actual == self.destino:

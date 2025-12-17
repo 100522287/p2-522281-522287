@@ -1,42 +1,47 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Módulo para la implementación de la lista abierta.
+Módulo para la implementación de la lista abierta usando Dial's Bucket.
 
-La lista abierta (OPEN) es una estructura de datos fundamental en los
-algoritmos de búsqueda heurística como A*. Debe soportar eficientemente:
-- Inserción de nodos con su valor f(n) = g(n) + h(n)
-- Extracción del nodo con menor valor f(n)
-- Actualización del valor de un nodo existente
+Dial's Algorithm (1969) es una optimización para el algoritmo de Dijkstra
+cuando los pesos de los arcos son enteros no negativos y acotados.
 
-Se implementa mediante un heap binario (heapq) que proporciona:
-- Inserción: O(log n)
-- Extracción del mínimo: O(log n)
-- Actualización: O(log n) con lazy deletion
+En lugar de usar un heap binario, utiliza un array de "buckets" (cubos)
+donde cada bucket i contiene los nodos con valor f(n) = i.
+
+Complejidad:
+- Inserción: O(1)
+- Extracción del mínimo: O(C) amortizado, donde C es el coste máximo de un arco
+- Actualización: O(1)
+
+Esta estructura es especialmente eficiente para los grafos DIMACS donde
+los costes son distancias en metros (enteros relativamente pequeños comparados
+con el número de nodos).
 """
 
-import heapq
+from collections import deque
 
 
 class ListaAbierta:
     """
-    Lista abierta implementada como cola de prioridad con lazy deletion.
+    Lista abierta implementada con Dial's Bucket.
     
-    Utiliza un heap binario para mantener los nodos ordenados por f(n).
-    La técnica de lazy deletion permite manejar eficientemente las
-    actualizaciones de valores sin necesidad de reordenar el heap.
+    Utiliza un array circular de buckets indexados por el valor f(n).
+    Cada bucket es una cola (deque) de nodos con el mismo valor f.
     
     Atributos:
-        heap: Lista que implementa el heap binario.
-        entrada: Diccionario para acceso rápido {nodo: (f, g, entrada_válida)}.
-        contador: Contador para desempate en el heap.
+        buckets: Diccionario de buckets {f: deque de (nodo, g)}.
+        entrada: Diccionario para acceso rápido {nodo: (f, g)}.
+        min_f: Valor f mínimo actual en la estructura.
+        num_elementos: Número de elementos válidos en la estructura.
     """
     
     def __init__(self):
         """Inicializa una lista abierta vacía."""
-        self.heap = []
-        self.entrada = {}
-        self.contador = 0
+        self.buckets = {}  # {f: deque de (nodo, g)}
+        self.entrada = {}  # {nodo: (f, g)}
+        self.min_f = float('inf')
+        self.num_elementos = 0
     
     def insertar(self, nodo, g, h):
         """
@@ -50,41 +55,74 @@ class ListaAbierta:
             g: Coste del camino desde el inicio hasta el nodo.
             h: Valor heurístico desde el nodo hasta el objetivo.
         """
-        f = g + h
+        f = int(g + h)  # Asegurar que f es entero para indexar buckets
         
-        # Si el nodo ya existe y tiene mejor g, ignorar
+        # Si el nodo ya existe, verificar si debemos actualizar
         if nodo in self.entrada:
-            _, g_anterior, valido = self.entrada[nodo]
-            if valido and g_anterior <= g:
-                return
-            # Marcar la entrada anterior como inválida (lazy deletion)
-            self.entrada[nodo] = (f, g_anterior, False)
+            f_anterior, g_anterior = self.entrada[nodo]
+            if g_anterior <= g:
+                return  # El valor existente es mejor o igual, ignorar
+            
+            # Eliminar la entrada anterior del bucket (lazy deletion)
+            # No eliminamos físicamente, solo actualizamos el diccionario
+            self.num_elementos -= 1
         
-        # Insertar nueva entrada
-        self.contador += 1
-        entrada = (f, self.contador, nodo, g)
-        self.entrada[nodo] = (f, g, True)
-        heapq.heappush(self.heap, entrada)
+        # Insertar en el bucket correspondiente
+        if f not in self.buckets:
+            self.buckets[f] = deque()
+        
+        self.buckets[f].append((nodo, g))
+        self.entrada[nodo] = (f, g)
+        self.num_elementos += 1
+        
+        # Actualizar mínimo
+        if f < self.min_f:
+            self.min_f = f
     
     def extraer_minimo(self):
         """
         Extrae y devuelve el nodo con menor valor f(n).
         
-        Utiliza lazy deletion: salta las entradas marcadas como inválidas.
+        Busca el bucket con menor índice que contenga nodos válidos.
+        Utiliza lazy deletion: salta las entradas que ya no son válidas.
         
         Returns:
             Tupla (nodo, g) del nodo con menor f, o None si la lista está vacía.
         """
-        while self.heap:
-            f, _, nodo, g = heapq.heappop(self.heap)
+        if self.num_elementos == 0:
+            return None
+        
+        # Buscar el bucket no vacío con menor f
+        # Empezamos desde min_f y avanzamos
+        while self.min_f in self.buckets or self.min_f < float('inf'):
+            if self.min_f not in self.buckets:
+                # Buscar el siguiente bucket existente
+                if not self.buckets:
+                    return None
+                self.min_f = min(self.buckets.keys())
             
-            # Verificar si esta entrada sigue siendo válida
-            if nodo in self.entrada:
-                f_guardado, g_guardado, valido = self.entrada[nodo]
-                if valido and g == g_guardado:
-                    # Eliminar del diccionario de entradas
-                    del self.entrada[nodo]
-                    return nodo, g
+            bucket = self.buckets[self.min_f]
+            
+            while bucket:
+                nodo, g = bucket.popleft()
+                
+                # Verificar si esta entrada sigue siendo válida
+                if nodo in self.entrada:
+                    f_guardado, g_guardado = self.entrada[nodo]
+                    if f_guardado == self.min_f and g == g_guardado:
+                        # Entrada válida, eliminar del diccionario y devolver
+                        del self.entrada[nodo]
+                        self.num_elementos -= 1
+                        return nodo, g
+            
+            # Bucket vacío, eliminarlo y buscar el siguiente
+            del self.buckets[self.min_f]
+            
+            if self.buckets:
+                self.min_f = min(self.buckets.keys())
+            else:
+                self.min_f = float('inf')
+                break
         
         return None
     
@@ -95,11 +133,7 @@ class ListaAbierta:
         Returns:
             True si no hay nodos válidos en la lista.
         """
-        # Verificar si hay alguna entrada válida
-        for _, (_, _, valido) in self.entrada.items():
-            if valido:
-                return False
-        return True
+        return self.num_elementos == 0
     
     def contiene(self, nodo):
         """
@@ -109,12 +143,9 @@ class ListaAbierta:
             nodo: Identificador del nodo.
             
         Returns:
-            True si el nodo está en la lista y su entrada es válida.
+            True si el nodo está en la lista.
         """
-        if nodo in self.entrada:
-            _, _, valido = self.entrada[nodo]
-            return valido
-        return False
+        return nodo in self.entrada
     
     def obtener_g(self, nodo):
         """
@@ -127,11 +158,111 @@ class ListaAbierta:
             Valor g del nodo, o None si no está en la lista.
         """
         if nodo in self.entrada:
-            _, g, valido = self.entrada[nodo]
-            if valido:
-                return g
+            _, g = self.entrada[nodo]
+            return g
         return None
     
     def __len__(self):
         """Devuelve el número de nodos válidos en la lista."""
-        return sum(1 for _, (_, _, valido) in self.entrada.items() if valido)
+        return self.num_elementos
+
+
+class ListaAbiertaDialOptimizada:
+    """
+    Versión optimizada de Dial's Bucket con array circular.
+    
+    Esta versión utiliza un array de tamaño fijo (basado en el coste máximo
+    de arco) y lo recorre de forma circular para encontrar el mínimo.
+    
+    Es más eficiente en memoria cuando el rango de valores f es conocido
+    y acotado.
+    
+    Atributos:
+        C: Coste máximo de un arco (determina el tamaño del array circular).
+        buckets: Lista de sets, cada uno conteniendo nodos con ese valor f mod (C+1).
+        entrada: Diccionario {nodo: (f, g)} para acceso rápido.
+        puntero: Índice actual para búsqueda circular.
+        num_elementos: Número de elementos en la estructura.
+    """
+    
+    def __init__(self, coste_maximo_arco):
+        """
+        Inicializa la lista abierta con Dial's Bucket circular.
+        
+        Args:
+            coste_maximo_arco: Coste máximo de cualquier arco en el grafo.
+        """
+        # El tamaño del array circular es C+1 donde C es el coste máximo
+        self.C = coste_maximo_arco
+        self.tamanio = self.C + 1
+        self.buckets = [set() for _ in range(self.tamanio)]
+        self.entrada = {}  # {nodo: (f, g)}
+        self.puntero = 0
+        self.num_elementos = 0
+    
+    def insertar(self, nodo, g, h):
+        """
+        Inserta un nodo en la lista abierta.
+        
+        Args:
+            nodo: Identificador del nodo.
+            g: Coste desde el inicio.
+            h: Valor heurístico.
+        """
+        f = int(g + h)
+        
+        if nodo in self.entrada:
+            f_anterior, g_anterior = self.entrada[nodo]
+            if g_anterior <= g:
+                return
+            # Eliminar de bucket anterior
+            indice_anterior = f_anterior % self.tamanio
+            self.buckets[indice_anterior].discard(nodo)
+            self.num_elementos -= 1
+        
+        # Insertar en nuevo bucket
+        indice = f % self.tamanio
+        self.buckets[indice].add(nodo)
+        self.entrada[nodo] = (f, g)
+        self.num_elementos += 1
+    
+    def extraer_minimo(self):
+        """
+        Extrae el nodo con menor f.
+        
+        Returns:
+            Tupla (nodo, g) o None si está vacía.
+        """
+        if self.num_elementos == 0:
+            return None
+        
+        # Buscar el siguiente bucket no vacío
+        for _ in range(self.tamanio):
+            if self.buckets[self.puntero]:
+                nodo = self.buckets[self.puntero].pop()
+                f, g = self.entrada[nodo]
+                del self.entrada[nodo]
+                self.num_elementos -= 1
+                return nodo, g
+            self.puntero = (self.puntero + 1) % self.tamanio
+        
+        return None
+    
+    def esta_vacia(self):
+        """Verifica si está vacía."""
+        return self.num_elementos == 0
+    
+    def contiene(self, nodo):
+        """Verifica si contiene un nodo."""
+        return nodo in self.entrada
+    
+    def obtener_g(self, nodo):
+        """Obtiene el valor g de un nodo."""
+        if nodo in self.entrada:
+            _, g = self.entrada[nodo]
+            return g
+        return None
+    
+    def __len__(self):
+        """Número de elementos."""
+        return self.num_elementos

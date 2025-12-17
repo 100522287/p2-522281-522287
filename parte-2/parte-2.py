@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Parte 2: Resolución del problema del camino más corto mediante A*.
+Parte 2: Resolución del problema del camino más corto mediante A* con Dial's Bucket.
 
 Este script encuentra el camino más corto entre dos vértices de un grafo
 de la 9th DIMACS Shortest-Path Challenge, utilizando el algoritmo A* con
 la distancia geodésica (Haversine) como heurística admisible.
+
+IMPORTANTE: Esta implementación utiliza Dial's Bucket en lugar de heap binario
+para la cola de prioridad, lo cual es más eficiente para grafos con pesos
+enteros como los de DIMACS.
 
 Uso: ./parte-2.py <vertice-1> <vertice-2> <nombre-del-mapa> <fichero-salida>
 
@@ -18,6 +22,12 @@ El algoritmo A* garantiza encontrar la solución óptima cuando:
 
 La distancia geodésica cumple ambas propiedades porque representa
 el camino más corto posible sobre la superficie terrestre.
+
+Dial's Bucket:
+- Estructura de datos que usa un array de "buckets" indexados por coste
+- Inserción: O(1)
+- Extracción del mínimo: O(C) amortizado, donde C es el rango de costes
+- Más eficiente que heap para grafos con pesos enteros acotados
 """
 
 import sys
@@ -57,6 +67,10 @@ def formatear_camino(camino):
 def main():
     """
     Función principal que ejecuta el solver de camino más corto.
+    
+    Ejecuta tanto A* (con heurística) como Dijkstra (fuerza bruta)
+    para poder comparar el número de expansiones y demostrar la
+    eficiencia de la heurística.
     """
     # Verificación de argumentos
     if len(sys.argv) != 5:
@@ -95,7 +109,8 @@ def main():
         print(f"Error: el vértice {vertice_2} no existe en el grafo")
         sys.exit(1)
     
-    print("--- Ejecutando A* (Búsqueda Informada) ---")
+    # Ejecutar A* (búsqueda informada con Dial's Bucket)
+    print("--- Ejecutando A* con Dial's Bucket (Búsqueda Informada) ---")
     algoritmo_astar = AlgoritmoAStarConPadres(grafo, vertice_1, vertice_2)
         
     tiempo_inicio = time.time()
@@ -105,31 +120,57 @@ def main():
     tiempo_astar = tiempo_fin - tiempo_inicio
     expansiones_astar = algoritmo_astar.expansiones
     
-    print(f"Coste: {coste_astar}")
-    print(f"Expansiones: {expansiones_astar}")
-    print(f"Tiempo: {tiempo_astar:.4f} s\n")
+    if coste_astar is not None:
+        print(f"Solución óptima encontrada con coste {coste_astar}")
+    else:
+        print("No se encontró solución")
+    print(f"Tiempo de ejecución: {tiempo_astar:.2f} segundos")
+    if tiempo_astar > 0:
+        print(f"# expansiones   : {expansiones_astar} ({expansiones_astar/tiempo_astar:.2f} nodes/sec)")
+    else:
+        print(f"# expansiones   : {expansiones_astar}")
+    print()
 
-    print("--- Ejecutando Dijkstra (Fuerza Bruta) ---")
+    # Ejecutar Dijkstra (fuerza bruta con Dial's Bucket)
+    print("--- Ejecutando Dijkstra con Dial's Bucket (Fuerza Bruta) ---")
     algoritmo_dijkstra = AlgoritmoDijkstra(grafo, vertice_1, vertice_2)
     
     tiempo_inicio = time.time()
-    _, coste_dijkstra = algoritmo_dijkstra.resolver() # Solo interesa el coste, el camino lo almacena pero no se usa aquí
+    _, coste_dijkstra = algoritmo_dijkstra.resolver()
     tiempo_fin = time.time()
     
     tiempo_dijkstra = tiempo_fin - tiempo_inicio
     expansiones_dijkstra = algoritmo_dijkstra.expansiones
 
-    print(f"Coste: {coste_dijkstra}")
-    print(f"Expansiones: {expansiones_dijkstra}")
-    print(f"Tiempo: {tiempo_dijkstra:.4f} s\n")
+    if coste_dijkstra is not None:
+        print(f"Solución óptima encontrada con coste {coste_dijkstra}")
+    else:
+        print("No se encontró solución")
+    print(f"Tiempo de ejecución: {tiempo_dijkstra:.2f} segundos")
+    if tiempo_dijkstra > 0:
+        print(f"# expansiones   : {expansiones_dijkstra} ({expansiones_dijkstra/tiempo_dijkstra:.2f} nodes/sec)")
+    else:
+        print(f"# expansiones   : {expansiones_dijkstra}")
+    print()
 
     # Comparativa
-    if expansiones_dijkstra > 0:
+    print("--- Comparativa ---")
+    if expansiones_dijkstra > 0 and expansiones_astar is not None:
         ahorro = 100 * (1 - expansiones_astar / expansiones_dijkstra)
         print(f"A* expandió un {ahorro:.2f}% menos de nodos que Dijkstra.")
     
+    if coste_astar == coste_dijkstra:
+        print("Ambos algoritmos encontraron la misma solución óptima.")
+    
     # Escribir solución en fichero
-    with open(fichero_salida, 'w') as f:
+    # Determinar la ruta del fichero de salida
+    if os.path.dirname(fichero_salida) == '':
+        directorio_script = os.path.dirname(os.path.abspath(__file__))
+        fichero_salida_completo = os.path.join(directorio_script, fichero_salida)
+    else:
+        fichero_salida_completo = fichero_salida
+    
+    with open(fichero_salida_completo, 'w') as f:
         if camino_astar is not None:
             f.write(formatear_camino(camino_astar))
             f.write('\n')

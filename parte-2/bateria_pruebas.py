@@ -3,6 +3,8 @@
 """
 Suite de pruebas automatizadas para la práctica de Búsqueda Heurística.
 Compara A* contra Dijkstra y verifica casos borde.
+
+Esta versión utiliza Dial's Bucket en lugar de heap binario.
 """
 
 import sys
@@ -68,15 +70,13 @@ def test_comparativa_aleatoria(grafo, nombre_mapa):
             continue
             
         # Caso C: Ambos encuentran camino -> Verificar optimalidad
-        # Usamos un pequeño margen de error por flotantes si fuera necesario, 
-        # pero aquí son enteros o sumas directas, debería ser exacto.
         if abs(coste_d - coste_a) < 1e-6:
             # Calcular ahorro de expansiones
             if dijkstra.expansiones > 0:
                 ahorro = 100 * (1 - astar.expansiones / dijkstra.expansiones)
                 ahorros.append(ahorro)
             aciertos += 1
-            # Opcional: imprimir puntos cada 5 tests
+            # Imprimir puntos cada 5 tests
             if (i+1) % 5 == 0:
                  print(f"  Iteración {i+1}: Costes coinciden ({coste_a}). Ahorro exp: {ahorro:.1f}%")
         else:
@@ -92,9 +92,6 @@ def test_vertices_invalidos(grafo):
     vertice_fake = -9999
     
     try:
-        # Intentamos instanciar o resolver con un nodo que no existe
-        # Nota: Tu implementación actual de heurística fallará con KeyError al buscar coordenadas
-        # Esto valida que el programa principal debe chequear existencia antes.
         astar = AlgoritmoAStarConPadres(grafo, vertice_fake, list(grafo.coordenadas.keys())[0])
         astar.heuristica(vertice_fake)
         print("⚠️ WARNING: El código aceptó un vértice inválido sin error (debería fallar o controlarse).")
@@ -103,8 +100,41 @@ def test_vertices_invalidos(grafo):
     except Exception as e:
         print(f"ℹ️ INFO: Saltó otra excepción controlada: {e}")
 
+def test_dial_bucket():
+    """Prueba 4: Verificar funcionamiento de Dial's Bucket"""
+    print("\n[TEST] Verificando Dial's Bucket")
+    
+    from abierta import ListaAbierta
+    
+    # Crear lista y probar operaciones básicas
+    lista = ListaAbierta()
+    
+    # Insertar varios nodos
+    lista.insertar(1, 100, 50)   # f = 150
+    lista.insertar(2, 50, 30)    # f = 80
+    lista.insertar(3, 200, 100)  # f = 300
+    lista.insertar(4, 60, 20)    # f = 80
+    
+    # Verificar que extrae en orden correcto (por f)
+    resultados = []
+    while not lista.esta_vacia():
+        resultado = lista.extraer_minimo()
+        if resultado:
+            resultados.append(resultado[0])
+    
+    # Los nodos con f=80 deberían salir primero (2 y 4), luego f=150 (1), luego f=300 (3)
+    # El orden entre 2 y 4 puede variar
+    if set(resultados[:2]) == {2, 4} and resultados[2] == 1 and resultados[3] == 3:
+        print("✅ PASSED: Dial's Bucket extrae nodos en orden correcto de f(n).")
+    else:
+        print(f"⚠️ WARNING: Orden inesperado: {resultados}")
+        print("  (Puede ser aceptable si el orden entre elementos con mismo f varía)")
+
 def main():
     directorio_script = os.path.dirname(os.path.abspath(__file__))
+    
+    # Primero probar Dial's Bucket
+    test_dial_bucket()
     
     for mapa in MAPAS_A_PROBAR:
         ruta_mapa = os.path.join(directorio_script, mapa)

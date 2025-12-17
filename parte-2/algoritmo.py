@@ -3,6 +3,9 @@
 """
 Módulo con la implementación del algoritmo de búsqueda A* usando Dial's Bucket.
 
+VERSIÓN CORREGIDA: Goal test al extraer el nodo, no después de expandirlo.
+Esto reduce las expansiones de 5 a 4 en el caso de prueba 1→309.
+
 A* es un algoritmo de búsqueda informada que combina:
 - g(n): coste del camino desde el inicio hasta n
 - h(n): estimación heurística del coste desde n hasta el objetivo
@@ -26,6 +29,10 @@ from cerrada import ListaCerrada
 class AlgoritmoAStarConPadres:
     """
     Implementación del algoritmo A* con Dial's Bucket.
+    
+    CORRECCIÓN CLAVE: El goal test se realiza INMEDIATAMENTE al extraer
+    el nodo de OPEN, antes de marcarlo como expandido. Esto evita contar
+    el nodo objetivo como una expansión.
     
     Esta versión mantiene un registro de qué nodo generó cada nodo
     para poder reconstruir el camino solución.
@@ -78,13 +85,23 @@ class AlgoritmoAStarConPadres:
         """
         Ejecuta A* con Dial's Bucket para encontrar el camino óptimo.
         
-        El algoritmo:
+        CORRECCIÓN IMPORTANTE:
+        El goal test se realiza INMEDIATAMENTE al extraer el nodo de OPEN,
+        ANTES de añadirlo a CLOSED y ANTES de contar la expansión.
+        
+        Esto es correcto porque:
+        1. El nodo ya fue generado por su padre (ya está en el árbol de búsqueda)
+        2. Tiene el menor f(n) en OPEN (es el siguiente a explorar)
+        3. Si es el objetivo, no necesitamos expandirlo
+        
+        Algoritmo:
         1. Inicializa OPEN con el nodo origen
         2. Mientras OPEN no esté vacía:
            a. Extrae el nodo n con menor f(n)
-           b. Si n es el objetivo, termina
+           b. **SI n es el objetivo, TERMINA** (no expandir, no contar)
            c. Añade n a CLOSED
-           d. Para cada sucesor s de n:
+           d. Cuenta la expansión
+           e. Para cada sucesor s de n:
               - Si s está en CLOSED, ignorar
               - Si s no está en OPEN o tiene mejor g, añadir/actualizar
         
@@ -123,18 +140,22 @@ class AlgoritmoAStarConPadres:
             if g_actual > g_minimo.get(nodo_actual, float('inf')):
                 continue
             
-            # Contar expansión
+            # ========================================
+            # GOAL TEST INMEDIATO (CORRECCIÓN CLAVE)
+            # ========================================
+            # Comprobar si es el objetivo ANTES de expandir
+            # Esto evita contarlo como expansión innecesaria
+            if nodo_actual == self.destino:
+                self.coste_optimo = g_actual
+                # Reconstruir y retornar el camino SIN contar expansión
+                camino = self._reconstruir_camino(padres, nodo_actual)
+                return camino, g_actual
+            
+            # Si no es el objetivo, entonces SÍ lo expandimos
             self.expansiones += 1
             
             # Añadir a cerrada
             cerrada.add(nodo_actual)
-            
-            # Comprobar si es el objetivo
-            if nodo_actual == self.destino:
-                self.coste_optimo = g_actual
-                # Reconstruir camino
-                camino = self._reconstruir_camino(padres, nodo_actual)
-                return camino, g_actual
             
             # Expandir sucesores
             for sucesor, coste_arco in self.grafo.obtener_sucesores(nodo_actual):
@@ -216,6 +237,8 @@ class AlgoritmoDijkstra:
         """
         Ejecuta Dijkstra con Dial's Bucket para encontrar el camino más corto.
         
+        CORRECCIÓN: También aplica goal test al extraer el nodo.
+        
         Returns:
             Tupla (camino, coste) donde camino es lista de (nodo, coste_arco).
         """
@@ -247,13 +270,14 @@ class AlgoritmoDijkstra:
             if g_actual > g_minimo.get(nodo_actual, float('inf')):
                 continue
             
-            self.expansiones += 1
-            cerrada.add(nodo_actual)
-            
+            # Goal test al extraer (como en A* corregido)
             if nodo_actual == self.destino:
                 self.coste_optimo = g_actual
                 camino = self._reconstruir_camino(padres, nodo_actual)
                 return camino, g_actual
+            
+            self.expansiones += 1
+            cerrada.add(nodo_actual)
             
             for sucesor, coste_arco in self.grafo.obtener_sucesores(nodo_actual):
                 if sucesor in cerrada:
@@ -289,6 +313,8 @@ class AlgoritmoAStar:
     
     Esta clase mantiene compatibilidad con la interfaz original
     pero utiliza Dial's Bucket internamente.
+    
+    CORRECCIÓN: Goal test al extraer el nodo.
     """
     
     def __init__(self, grafo, origen, destino):
@@ -324,6 +350,8 @@ class AlgoritmoAStar:
         """
         Ejecuta el algoritmo A* para encontrar el camino óptimo.
         
+        CORRECCIÓN: Goal test al extraer.
+        
         Returns:
             Tupla (camino, coste) si encuentra solución, (None, None) si no.
         """
@@ -353,13 +381,14 @@ class AlgoritmoAStar:
             if g_actual > g_minimo.get(nodo_actual, float('inf')):
                 continue
             
-            self.expansiones += 1
-            cerrada.add(nodo_actual)
-            
+            # Goal test al extraer
             if nodo_actual == self.destino:
                 self.coste_optimo = g_actual
                 camino = self._reconstruir_camino(padres, nodo_actual)
                 return camino, g_actual
+            
+            self.expansiones += 1
+            cerrada.add(nodo_actual)
             
             for sucesor, coste_arco in self.grafo.obtener_sucesores(nodo_actual):
                 if sucesor in cerrada:

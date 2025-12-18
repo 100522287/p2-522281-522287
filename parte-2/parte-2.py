@@ -6,7 +6,7 @@ import time
 import os
 
 from grafo import Grafo
-from algoritmo import AlgoritmoAEstrella
+from algoritmo import AlgoritmoAEstrella, AlgoritmoDijkstra
 
 
 # Aquí se ejecuta el codigo principal de la parte 2 del proyecto (la funcion principa es main)
@@ -105,7 +105,42 @@ def main():
         print(f"# expansiones   : {expansiones_astar}")
     print()
 
-    
+     # Se ejecuta Dijkstra
+    print("--- Ejecutando Dijkstra ---")
+    # se crea una instancia de Dijkstra, pasando como argumentos el grafo, el vertice origen y el vertice destino
+    algoritmo_dijkstra = AlgoritmoDijkstra(grafo, vertice_1, vertice_2)
+    # Se mide cuanto tarda
+    tiempo_inicio = time.time()
+    # Se llama a la funcion de resolver, que aplica el algoritmo de Dijkstra y devuelve el coste y el camino optimo
+    _, coste_dijkstra = algoritmo_dijkstra.resolver()
+    tiempo_fin = time.time()
+    # Se calcula el tiempo que ha tardado en ejecutarse el algoritmo
+    tiempo_dijkstra = tiempo_fin - tiempo_inicio
+    # numero de nodos exapandidos por el algoritmo
+    expansiones_dijkstra = algoritmo_dijkstra.expansiones
+
+    # Se imprimen los datos obtenidos al ejecutar Dijkstra por pantalla
+    if coste_dijkstra is not None:
+        print(f"Solución óptima encontrada con coste {coste_dijkstra}")
+    else:
+        print("No se encontró solución")
+    print(f"Tiempo de ejecución: {tiempo_dijkstra:.2f} segundos")
+    if tiempo_dijkstra > 0:
+        print(f"# expansiones   : {expansiones_dijkstra} ({expansiones_dijkstra/tiempo_dijkstra:.2f} nodes/sec)")
+    else:
+        print(f"# expansiones   : {expansiones_dijkstra}")
+    print()
+
+    # Se realiza la comparativa entre ambos algoritmos
+    print("--- Comparativa ---")
+    # Se calcula el ahorro en numero de expansiones al usar A* en lugar de Dijkstra
+    if expansiones_dijkstra > 0 and expansiones_astar is not None:
+        ahorro = 100 * (1 - expansiones_astar / expansiones_dijkstra)
+        print(f"A* expandió un {ahorro:.2f}% menos de nodos que Dijkstra.")
+    # Se comprueba si ambos algoritmos han encontrado la misma solución óptima
+    if coste_astar == coste_dijkstra:
+        print("Ambos algoritmos encontraron la misma solución óptima.")
+
     # Determinar la ruta del fichero de salida
     if os.path.dirname(fichero_salida) == '':
         directorio_script = os.path.dirname(os.path.abspath(__file__))

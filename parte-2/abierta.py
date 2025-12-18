@@ -1,122 +1,84 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Módulo para la implementación de la lista abierta usando Dial's Bucket.
-
-VERSIÓN OPTIMIZADA:
-- Sin lazy deletion
-- Usa set() en lugar de deque() para eliminaciones O(1)
-
-Dial's Algorithm (1969) es una optimización para el algoritmo de Dijkstra
-cuando los pesos de los arcos son enteros no negativos y acotados.
-
-MEJORA CLAVE: Usar set() en lugar de deque()
-- deque.remove(nodo) es O(n) → tiene que buscar linealmente
-- set.discard(nodo) es O(1) → hash lookup directo
-
-Esta mejora es crucial para distancias largas donde hay muchas actualizaciones.
-
-Complejidad:
-- Inserción: O(1)
-- Extracción del mínimo: O(1) amortizado
-- Actualización: O(1) ← MEJORADO (antes era O(n) con deque.remove)
-"""
 
 
+# Clase que implementa toda la logica necesaria para una lista abierta que se usa en los algoritmos de A* y Dikstra
+# Se implementa con dial's bucket en con set() en vez de con una lista normal para aumentar la eficiencia de las actualizaciones
+# Sus funciones principales son insertar y extraer_minimo, aunque tambien contiene funciones secundarias
 class ListaAbierta:
-    """
-    Lista abierta implementada con Dial's Bucket usando set() para buckets.
-    
-    CAMBIO PRINCIPAL: Los buckets son set() en lugar de deque().
-    Esto hace que las eliminaciones sean O(1) en lugar de O(n).
-    
-    Ventajas de set():
-    - add(): O(1)
-    - discard(): O(1) ← ¡CLAVE!
-    - pop(): O(1)
-    
-    Desventaja de deque() que teníamos antes:
-    - remove(): O(n) ← problema en distancias largas
-    
-    Atributos:
-        buckets: Diccionario de buckets {f: set de nodos}.
-        entrada: Diccionario para acceso rápido {nodo: (f, g)}.
-        min_f: Valor f mínimo actual en la estructura.
-    """
     
     def __init__(self):
-        """Inicializa una lista abierta vacía."""
-        self.buckets = {}  # {f: set de nodos}  ← CAMBIO: set en lugar de deque
-        self.entrada = {}  # {nodo: (f, g)}
-        self.min_f = float('inf')
+        self.buckets = {}  # Diccionario donde las claves son el coste f y los valores son los nodos que tienen esa f
+        self.entrada = {}  # Diccionario auxiliar para comprobar si un nodo esta en la lista
+        self.min_f = float('inf') # la variable que rastrea el valor minimo de f se inicializa como infinito
     
+
+    # Funcion que permite insertar un nuevo nodo o actualizar uno existente si 
+    # ha encontrado un camino mejor.
     def insertar(self, nodo, g, h):
-        """
-        Inserta un nodo en la lista abierta o actualiza su valor si ya existe.
+        # nodo: Identificador del nodo.
+        # g: Coste del camino desde el inicio hasta el nodo.
+        # h: Valor heurístico desde el nodo hasta el objetivo.
         
-        Si el nodo ya está en la lista con un valor g mayor, se actualiza
-        eliminándolo explícitamente del bucket anterior (ahora en O(1)).
-        
-        Args:
-            nodo: Identificador del nodo.
-            g: Coste del camino desde el inicio hasta el nodo.
-            h: Valor heurístico desde el nodo hasta el objetivo.
-        """
+        # Se calcula la prioridad f del nodo sumando su coste acumulado desde el inicio y su heuristica
         f = int(g + h)  # Asegurar que f es entero para indexar buckets
         
-        # Si el nodo ya existe, verificar si debemos actualizar
+        # Comprobamos si el nodo ya existe en la lista de entrada
         if nodo in self.entrada:
+            # Si existe en entrada, cogemos los valores del nodo en la lista
             f_anterior, g_anterior = self.entrada[nodo]
             
-            # Si el nuevo g no es mejor, ignorar
+            # Si el coste del camino de la lista es mejor que el nuevo, no hacemos nada
             if g_anterior <= g:
                 return
             
-            # ELIMINACIÓN EXPLÍCITA en O(1) con set.discard()
+            # Verificamos que el bucket antiguo exista
             if f_anterior in self.buckets:
-                self.buckets[f_anterior].discard(nodo)  # O(1) ← MEJORADO
+                # se eliminina el nodo antiguo del buvket antiguo 
+                self.buckets[f_anterior].discard(nodo)  # Se utiliza discard en vez de buscar en una lista porque es más rapido O(1)
                 
-                # Si el bucket queda vacío, eliminarlo
+                # Si el bucket queda vacío tras eliminar el nodo antiguo, lo eliminamos
                 if not self.buckets[f_anterior]:
                     del self.buckets[f_anterior]
                     # Si era el mínimo, recalcular
                     if f_anterior == self.min_f:
+                        # Si quedan buckets buscamos el nuevo minimo, y si no lo encontramos, volvemos a infinito
                         if self.buckets:
                             self.min_f = min(self.buckets.keys())
                         else:
                             self.min_f = float('inf')
         
-        # Insertar en el bucket correspondiente
+        # Si el nodo no exiete en la lista de entradas:
+        # Si no existe un bucket f, se crea para poder almacenar l nuevo nodo
         if f not in self.buckets:
-            self.buckets[f] = set()  # ← CAMBIO: set en lugar de deque
+            self.buckets[f] = set()  # Se usa set en lugar de deque porque es mas eficiente
         
-        self.buckets[f].add(nodo)  # ← CAMBIO: add en lugar de append
+        # Se almacena el nuevo nodo tanto en buckets como en entrada
+        self.buckets[f].add(nodo)  # Se usa add en lugar de append porque es mas eficiente
         self.entrada[nodo] = (f, g)
         
-        # Actualizar mínimo
+        # Se actualiza el min_f si es necesario
         if f < self.min_f:
             self.min_f = f
     
+
+    # Funcion que extrae el nodo con el menor coste f para expandirlo
     def extraer_minimo(self):
-        """
-        Extrae y devuelve el nodo con menor valor f(n).
-        
-        Como usamos set(), pop() saca un elemento arbitrario en O(1).
-        
-        Returns:
-            Tupla (nodo, g) del nodo con menor f, o None si la lista está vacía.
-        """
+        # Si buckets está vacio, se devuelve none, ya que no hay nada que devolver
         if not self.buckets:
             return None
         
-        # El bucket con min_f debe existir y no estar vacío
+        # Bucle while para asegurar que encontramos un nodo usando min_f
         while self.min_f in self.buckets:
+            # Obtiene todos los nodos cuya f sea la minima
             bucket = self.buckets[self.min_f]
-            
+
+            # Si el bucket tiene elementos:
             if bucket:
+                # Se extrae uno de los nodos contenidos en el bucket
                 nodo = bucket.pop()  # O(1) con set.pop()
                 
-                # Si el bucket queda vacío, eliminarlo
+                # Si tras sacar el nodo anterior el bucket queda vacío, se elimina
                 if not bucket:
                     del self.buckets[self.min_f]
                 
@@ -125,60 +87,42 @@ class ListaAbierta:
                     _, g = self.entrada[nodo]
                     del self.entrada[nodo]
                     
-                    # Actualizar min_f si es necesario
+                    # Actualizar min_f en el caso de que fuese necesario
                     if not self.buckets:
                         self.min_f = float('inf')
                     elif self.min_f not in self.buckets:
                         self.min_f = min(self.buckets.keys())
                     
+                    # Al final, se devuelve el nodo y su coste acumulado g
                     return nodo, g
             
-            # Bucket vacío (no debería pasar), eliminarlo y continuar
+            # Si el bucket está vacio, se elimina de la lista, aunque esto no deberia pasar
             del self.buckets[self.min_f]
+            # Se actualiza min_f en base a si existe el diccionario buckets tras eliminar el nodo anterior
             if self.buckets:
                 self.min_f = min(self.buckets.keys())
             else:
                 self.min_f = float('inf')
                 break
         
+        # Si no se ha encontrado nada, no se devuelve nada
         return None
     
+    # Funcion que verifica si la lista abierta está vacia 
     def esta_vacia(self):
-        """
-        Verifica si la lista abierta está vacía.
-        
-        Returns:
-            True si no hay nodos en la lista.
-        """
         return len(self.entrada) == 0
     
+    # Funcion que verifica si una lis
     def contiene(self, nodo):
-        """
-        Verifica si un nodo está en la lista abierta.
-        
-        Args:
-            nodo: Identificador del nodo.
-            
-        Returns:
-            True si el nodo está en la lista.
-        """
         return nodo in self.entrada
     
+    # Funcion que obtiene el valor del coste acumulado g de un nodo en la lista abierta
     def obtener_g(self, nodo):
-        """
-        Obtiene el valor g de un nodo en la lista abierta.
-        
-        Args:
-            nodo: Identificador del nodo.
-            
-        Returns:
-            Valor g del nodo, o None si no está en la lista.
-        """
         if nodo in self.entrada:
             _, g = self.entrada[nodo]
             return g
         return None
     
+    # Funcion que devuelve el numero de nodos de la lista abierta
     def __len__(self):
-        """Devuelve el número de nodos en la lista."""
         return len(self.entrada)

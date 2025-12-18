@@ -55,29 +55,7 @@ class ListaCerrada:
             return g
         # Si el nodo no está en la lista. no retorna nada
         return None
-    
 
-    # Funcion que reconstruye el camino desde el nodo inicial hasta el nodo objetivo (pasado como argumento) 
-    def reconstruir_camino(self, nodo_objetivo):
-        # Se crea una lista vacia para almacenar la secuencia de nodos
-        camino = []
-        # Se empieza por el nodo final, y se va reconstruyendo hasta el nodo inicial
-        nodo_actual = nodo_objetivo
-        
-        # Bucle while que va retrocediendo hasta el inicio
-        # El nodo inicial se habrá guardado con padre = none, lo que detendrá el bucle 
-        while nodo_actual is not None:
-            # Se recupera cuanto costó llegar hasta este nodo desde su padre
-            coste_arco = self.obtener_coste_arco(nodo_actual)
-            # Se añade al camino la tupla nodo, coste
-            camino.append((nodo_actual, coste_arco))
-            # Nodo actual pasa a ser el padre del nodo actual
-            nodo_actual = self.obtener_padre(nodo_actual)
-        
-        # Invertir para obtener el camino desde el inicio
-        camino.reverse()
-        # Se retorna la lista con todas las tuplas ordenadas
-        return camino
     
     # Devuelve el número de nodos en la lista cerrada.
     def __len__(self):

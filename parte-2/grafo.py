@@ -55,7 +55,7 @@ class Grafo:
                 if len(partes) >= 4 and partes[0] == 'v':
                     # Se parsean las palabras leidas de la linea
                     vertice = int(partes[1])
-                    # Las coordenadas vienen multiplicadas por 10^6, por lo tanto, se dividen por ese numero
+                    # Las coordenadas vienen multiplicadas por 1e6, por lo tanto, se dividen por ese numero
                     longitud = int(partes[2]) / 1e6
                     latitud = int(partes[3]) / 1e6
                     

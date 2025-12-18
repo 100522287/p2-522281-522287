@@ -46,57 +46,37 @@ class AlgoritmoAStarConPadres:
             origen: Identificador del vértice de inicio.
             destino: Identificador del vértice objetivo.
         """
-        self.grafo = grafo
-        self.origen = origen
-        self.destino = destino
-        self.expansiones = 0
+        self.grafo = grafo # Objeto Grafo con el problema.
+        self.origen = origen # Identificador del vértice de inicio.
+        self.destino = destino # Identificador del vértice de destino.
+        self.expansiones = 0 # numero de expansiones (al principio 0)
         self.coste_optimo = None
-        
-        # CACHÉ DE HEURÍSTICA ← OPTIMIZACIÓN CLAVE
-        self.cache_h = {}
-        self.hits_cache = 0  # Para estadísticas
+        # Se crea diccionario vacio para guardar los valores de la heuristica
+        self.cache_h = {} # Lo hacemos para evitar calcular multiples veces la distiancia Haversine de un mismo nodo 
+        # variables para las estadisticas
+        self.hits_cache = 0  
         self.miss_cache = 0
     
+
+    # Funcion que calcula la distancia Haversine (h(n)) desde el nodo actual, pasado como argumento, al nodo de destino
     def heuristica(self, nodo):
-        """
-        Calcula el valor heurístico h(n) usando distancia geodésica CON CACHÉ.
-        
-        OPTIMIZACIÓN: En lugar de calcular h(n) cada vez que insertamos el nodo
-        en OPEN, lo calculamos UNA VEZ y lo guardamos.
-        
-        Beneficio en distancias largas:
-        - Sin caché: 50,000 nodos generados → 50,000 cálculos de Haversine
-        - Con caché: 50,000 nodos generados pero solo 10,000 únicos → 10,000 cálculos
-        
-        Args:
-            nodo: Identificador del nodo.
-            
-        Returns:
-            Estimación admisible del coste hasta el destino.
-        """
-        # Verificar si ya está en caché
+        # Se verifica primero si la h(n) ya está en caché
         if nodo in self.cache_h:
             self.hits_cache += 1
+            # Se devuelve el valor guardado en el diccionario
             return self.cache_h[nodo]
         
-        # No está en caché, calcularlo
-        self.miss_cache += 1
+        # Si no está en cache, calculamos la distancia llamando a la funcion distancia_haversine de la clase grafo
+        self.miss_cache += 1 # sumamos uno ya que ha ocurrido un "fallo de caché"
         h = self.grafo.distancia_haversine(nodo, self.destino)
+        # Se guarda en cache la distancia calculada (para que no se tenga que calcular más)
         self.cache_h[nodo] = h
+        # Se devuelve la distancia calculada
         return h
     
+
+    # Funcion que ejecuta el algoritmo A* para encontrar el camino más óptimo
     def resolver(self):
-        """
-        Ejecuta A* optimizado para encontrar el camino óptimo.
-        
-        Con las optimizaciones:
-        - Caché de heurística reduce cálculos costosos
-        - Lista abierta con set() hace actualizaciones más rápidas
-        - Resultado: A* más rápido que Dijkstra en TODOS los casos
-        
-        Returns:
-            Tupla (camino, coste) donde camino es lista de (nodo, coste_arco).
-        """
         # Estructuras de datos usando Dial's Bucket optimizado
         abierta = ListaAbierta()
         

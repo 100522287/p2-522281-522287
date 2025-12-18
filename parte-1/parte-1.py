@@ -1,54 +1,37 @@
-"""
-Parte 1: Resolución del problema BINAIRO mediante Satisfacción de Restricciones.
-El problema consiste en rellenar una rejilla n×n con
-discos blancos (O) y negros (X) cumpliendo las siguientes restricciones:
-  - No debe quedar ninguna posición vacía.
-  - El número de discos blancos y negros en cada fila y columna debe ser igual.
-  - No es posible disponer más de dos discos del mismo color consecutivamente.
-
-Uso: python3 parte-1.py <fichero-entrada> <fichero-salida>
-"""
 
 import sys 
 from constraint import Problem, ExactSumConstraint
 
 
+# En este fichero se implementa la solucion a la primera parte de la practica
+
+
+# Funcion que lee el fichero de entrada y devuelve la matriz del problema.
 def leer_instancia(fichero_entrada):
-    """
-    Lee el fichero de entrada y devuelve la matriz del problema.
-    
-    Argumentos:
-        fichero_entrada: Ruta al fichero con la instancia del problema.
-        
-    Returns:
-        Lista de listas representando la rejilla del problema.
-        '.' indica celda vacía, 'X' disco negro, 'O' disco blanco.
-    """
+
+    # Abre el fichero en modo lectura de forma segura (se cierra solo al acabar)
     with open(fichero_entrada, 'r') as f:
-        lineas = f.read().strip().split('\n') # Leer todas las líneas del archivo
+        lineas = f.read().strip().split('\n') # Lee todas las líneas del archivo
     
-    matriz = []
+    matriz = [] # Inicializa una lista donde se guardará el tablero procesado
+    # bucle que recorre todas las lineas
     for linea in lineas:
+        # Convierte la fila en una lista de caracteres
         fila = list(linea.strip()) 
-        matriz.append(fila) # Añadir cada fila a la matriz
+        matriz.append(fila) # Añade cada fila a la matriz
 
-    return matriz # Devolver la matriz completa
+    return matriz # Devuelve la matriz completa
 
 
+
+# Funcion que genera la representación visual de la rejilla.
 def formato_rejilla(matriz, n):
-    """
-    Genera la representación visual de la rejilla.
-    
-    Argumentos:
-        matriz: Lista de listas con los valores de las celdas.
-        n: Dimensión de la rejilla.
-        
-    Returns:
-        String con la representación formateada de la rejilla.
-    """
-    separador = '+---' * n + '+'
+
+    separador = '+---' * n + '+' # Crea la linea horizontal divisoria
+    # Inicializa la lista de lineas a imprimir empezando con el borde superior
     lineas = [separador]
     
+    # bucle que se repite para cada fila en la matriz para pintar el rectangulo
     for fila in matriz:
         contenido = '|'
         for celda in fila:
@@ -71,29 +54,18 @@ def formato_rejilla(matriz, n):
     return '\n'.join(lineas) # Devolver la rejilla formateada como string
 
 
+
+# Verifica que tres valores consecutivos no sean todos iguales (todos blancos o todos negros).
+# Esta restricción asegura que no haya más de dos discos del mismo color consecutivos en una fila o columna.
 def restriccion_no_tres_consecutivos(v1, v2, v3):
-    """
-    Verifica que tres valores consecutivos no sean todos iguales (todos blancos o todos negros).
-    
-    Esta restricción asegura que no haya más de dos discos del mismo
-    color consecutivos en una fila o columna.
-    
-    Argumentos:
-        v1, v2, v3: Valores de tres celdas consecutivas.
-        
-    Returns:
-        True si la restricción se satisface, False en caso contrario.
-    """
-    # No pueden ser los tres iguales (ni todos 0, ni todos 1)
-    suma = v1 + v2 + v3
+    suma = v1 + v2 + v3 # No pueden ser los tres iguales (ni todos 0, ni todos 1)
     return suma >= 1 and suma <= 2
 
 
+# Funcion que crea el modelo de satisfacción de restricciones para BINAIRO.
 def crear_modelo(matriz):
     """
-    Crea el modelo de satisfacción de restricciones para BINAIRO.
-    
-    El modelo sigue la formalización:
+    El modelo sigue la siguiente formalización:
     - Variables: x_ij para cada celda (i,j)
     - Dominios: {0,1} para celdas vacías, valor fijo para celdas pre-asignadas
     - Restricciones: 
@@ -101,17 +73,10 @@ def crear_modelo(matriz):
             C2 (equilibrio columnas),
             C3 (no tres consecutivos en filas),
             C4 (no tres consecutivos en columnas)
-    
-    Argumentos:
-        matriz: Rejilla del problema con valores iniciales.
-        
-    Returns:
-        Objeto Problem configurado con el modelo CSP.
     """
-    n = len(matriz)
-    problem = Problem()
+    n = len(matriz) # Obtiene el tamaño de la rejilla 
+    problem = Problem() # Crea una instancia vacia del solucionador
     
-    # Creación de variables con sus dominios
     # Cada variable se identifica como (i, j) representando la celda en fila i, columna j
     for i in range(n):
         for j in range(n):
@@ -155,62 +120,54 @@ def crear_modelo(matriz):
     return problem
 
 
+# Solucion que convierte el diccionario de solucion a formato matriz
 def solucion_a_matriz(dic, n):
-    """
-    Convierte el diccionario de solución a formato matriz.
-    
-    Argumentos:
-        dic: Diccionario con asignaciones {(i,j): valor}.
-        n: Dimensión de la rejilla.
-        
-    Returns:
-        Lista de listas con los valores de la solución.
-    """
-    matriz = [[0 for _ in range(n)] for _ in range(n)] # Inicializar matriz llena de ceros
+    matriz = [[0 for _ in range(n)] for _ in range(n)] # Inicializa una matriz llena de ceros
+    # Itera sobre la matriz rellenando las posiciones con ceros o unos como corresponda
     for (i, j), valor in dic.items():
         matriz[i][j] = valor
     return matriz
 
 
+
+# Función principal que ejecuta el solver de BINAIRO.
 def main():
-    """
-    Función principal que ejecuta el solver de BINAIRO.
-    """
     # Verificación de argumentos
     if len(sys.argv) != 3:
-        print("Uso: python3 parte-1.py <fichero-entrada> <fichero-salida>")
+        print("Uso: python3 parte-1.py <fichero-entrada.in <fichero-salida.out>")
         sys.exit(1)
     
+    # Recibe los archivos de entrada y salida
     fichero_entrada = sys.argv[1]
     fichero_salida = sys.argv[2]
     
-    # Lectura de la instancia
+    # Se llama a la funcion auxiliar leer_instancia para obtener el "tablero"
     matriz = leer_instancia(fichero_entrada)
-    n = len(matriz)
+    n = len(matriz) # Calcula las dimensiones del tablero
     
-    # Mostrar instancia en pantalla
+    # Muestra la instancia en pantalla
     print(formato_rejilla(matriz, n))
     
-    # Crear y resolver el modelo CSP
+    # Creaa y resuelve el modelo CSP
     problem = crear_modelo(matriz)
     
-    # Obtener todas las soluciones
+    # Obtiene todas las soluciones
     soluciones = problem.getSolutions()
     num_soluciones = len(soluciones)
     
-    # Mostrar número de soluciones
+    # Muestra número de soluciones
     if num_soluciones == 1:
         print("Una solución encontrada")
     else:
         print(f"{num_soluciones} soluciones encontradas")
     
-    # Escribir en fichero de salida
+    # Escribe en el fichero de salida
     with open(fichero_salida, 'w') as f:
         # Primero escribir la instancia original
         f.write(formato_rejilla(matriz, n))
         f.write('\n\n')
         
-        # Luego escribir una solución (si existe)
+        # Luego, escribie una solución (si existe)
         if num_soluciones > 0:
             solucion = soluciones[0]
             matriz_solucion = solucion_a_matriz(solucion, n)
